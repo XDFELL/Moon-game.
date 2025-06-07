@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Moon Game - Popularity Voting with Score Tiers</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+  :root {
+    --color-bg: #ffffff;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #6b7280;
+    --color-accent: #4f46e5;
+    --color-accent-light: #e0e7ff;
+    --color-card-bg: #f9fafb;
+    --color-border: #e5e7eb;
+    --color-vote-bar-bg: #c7d2fe;
+    --color-vote-bar-fill: #4f46e5;
+
+    --radius: 0.75rem;
+    --transition: 0.3s ease;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding: 2rem 1rem 4rem;
+  }
+
+  h1, h2, h3 {
+    margin-top: 0;
+    color: var(--color-text-primary);
+  }
+
+  h1 {
+    font-weight: 700;
+    font-size: 3rem;
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-weight: 600;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h3 {
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  p {
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    background-color: var(--color-accent);
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius);
+    font-size: 1.1rem;
+    transition: background-color var(--transition), transform var(--transition);
+    user-select: none;
+  }
+  button:hover, button:focus {
+    background-color: #4338ca;
+    transform: scale(1.05);
+    outline: none;
+  }
+  button:disabled, button[disabled] {
+    background-color: #a5b4fc;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  input[type="text"], input[type="number"] {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    transition: border-color var(--transition), box-shadow var(--transition);
+    width: 100%;
+    max-width: 320px;
+    color: var(--color-text-primary);
+  }
+  input[type="text"]:focus, input[type="number"]:focus {
+    border-color: var(--color-accent);
+    outline: none;
+    box-shadow: 0 0 6px var(--color-accent-light);
+  }
+
+  label {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    display: block;
+    color: var(--color-text-primary);
+  }
+
+  .container {
+    max-width: 600px;
+    width: 100%;
+  }
+
+  .card {
+    background-color: var(--color-card-bg);
+    border-radius: var(--radius);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    padding: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  /* Layout for screens */
+  .flex-row {
+    display: flex;
+    gap: 1rem;
+  }
+  .flex-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Form Group for spacing */
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Room code display style */
+  .room-code {
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 0.2em;
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+    border-radius: var(--radius);
+    padding: 0.75rem 1.5rem;
+    user-select: all;
+  }
+
+  /* Player list and voting items */
+  .player-list {
+    margin-top: 1rem;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    background: white;
+  }
+
+  .player-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .player-item:last-child {
+    border-bottom: none;
+  }
+
+  .player-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .vote-input {
+    width: 4rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    transition: border-color var(--transition);
+  }
+  .vote-input:focus {
+    border-color: var(--color-accent);
+    outline: none;
+    box-shadow: 0 0 6px var(--color-accent-light);
+  }
+
+  /* Vote allocation info */
+  .votes-remaining {
+    font-weight: 600;
+    color: var(--color-accent);
+    margin-bottom: 1rem;
+  }
+  .votes-used {
+    color: #ef4444; /* red */
+    font-weight: 600;
+    margin-left: 0.25rem;
+  }
+
+  /* Results list */
+  .results-list {
+    margin-top: 1rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    background: white;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .results-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    font-weight: 600;
+  }
+  .results-item:last-child {
+    border-bottom: none;
+  }
+  .score-tier {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-accent);
+    margin-left: 1rem;
+    font-family: monospace;
+    min-width: 1.8rem;
+    text-align: center;
+  }
+
+  /* Vote bar for visual appeal */
+  .vote-bar-container {
+    flex: 1;
+    margin-left: 1rem;
+    height: 14px;
+    border-radius: var(--radius);
+    background-color: var(--color-vote-bar-bg);
+    overflow: hidden;
+    position: relative;
+  }
+  .vote-bar-fill {
+    height: 100%;
+    background-color: var(--color-vote-bar-fill);
+    transition: width 0.3s ease;
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  /* Header and footer */
+  header, footer {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 2rem;
+  }
+  footer {
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  /* Screen visibility */
+  .screen {
+    display: none;
+  }
+  .screen.active {
+    display: block;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    body {
+      padding: 1rem 0.5rem 3rem;
+    }
+    .player-item, .results-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.3rem;
+    }
+    .vote-bar-container {
+      margin-left: 0;
+      width: 100%;
+      height: 10px;
+      margin-top: 4px;
+      border-radius: var(--radius);
+    }
+  }
+
+  /* Loading text style */
+  #players-vote-list.loading {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<header class="center">
+  <h1>Moon Game</h1>
+  <p>Distribute your 5 votes to the players you like - but not yourself!</p>
+</header>
+
+<div class="container">
+
+  <!-- Login and room join/create selection -->
+  <section id="login-screen" class="screen active card center" aria-label="Login and Room Selection">
+    <form id="login-form" novalidate>
+      <div class="form-group">
+        <label for="nickname-input">Enter your nickname</label>
+        <input
+          type="text"
+          id="nickname-input"
+          name="nickname"
+          placeholder="CoolNickname"
+          minlength="1"
+          maxlength="25"
+          required
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="nickname-desc"
+        />
+        <small id="nickname-desc" style="color: var(--color-text-secondary);">Choose a nickname to join the game.</small>
+      </div>
+
+      <div class="flex-row" style="justify-content: center; gap: 2rem; margin-top: 2rem;">
+        <button type="button" id="btn-create-room">Create Room</button>
+        <button type="button" id="btn-join-room">Join Room</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Create room screen -->
+  <section id="create-room-screen" class="screen card" aria-label="Create Room">
+    <form id="create-room-form" novalidate>
+      <div class="form-group">
+        <label for="max-players-input">Maximum players (1-2000)</label>
+        <input
+          type="number"
+          id="max-players-input"
+          min="1"
+          max="2000"
+          required
+          autocomplete="off"
+          aria-describedby="max-players-desc"
+          aria-label="Maximum players"
+        />
+        <small id="max-players-desc" style="color: var(--color-text-secondary);">Set the maximum number of players allowed in this room.</small>
+      </div>
+
+      <div class="flex-row" style="justify-content: center; gap: 1.5rem;">
+        <button type="submit" id="btn-create-room-submit" disabled>Create Room</button>
+        <button type="button" id="btn-create-room-back">Back</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Join room screen -->
+  <section id="join-room-screen" class="screen card" aria-label="Join Room">
+    <form id="join-room-form" novalidate>
+      <div class="form-group">
+        <label for="room-code-input">Enter room code</label>
+        <input
+          type="text"
+          id="room-code-input"
+          maxlength="4"
+          minlength="4"
+          required
+          autocomplete="off"
+          spellcheck="false"
+          pattern="[A-Z0-9]{4}"
+          aria-describedby="room-code-desc"
+          style="text-transform: uppercase;"
+        />
+        <small id="room-code-desc" style="color: var(--color-text-secondary);">Enter the 4-letter room code to join.</small>
+      </div>
+
+      <div class="flex-row" style="justify-content: center; gap: 1.5rem;">
+        <button type="submit" id="btn-join-room-submit" disabled>Join Room</button>
+        <button type="button" id="btn-join-room-back">Back</button>
+      </div>
+
+      <p id="join-error-message" role="alert" style="color:#ef4444; font-weight:600; margin-top:1rem; display:none;"></p>
+    </form>
+  </section>
+
+  <!-- Lobby and voting screen -->
+  <section id="room-screen" class="screen card" aria-label="Room and Voting">
+    <h2 id="room-code-display" tabindex="0" aria-label="Room code"></h2>
+    <p>Max players: <span id="room-max-players"></span></p>
+    <p>Players in room: <span id="room-player-count"></span></p>
+    <p class="votes-remaining" aria-live="polite" aria-atomic="true" aria-relevant="text">
+      Votes remaining: <span id="votes-remaining">5</span>
+    </p>
+
+    <form id="voting-form" novalidate>
+      <div id="players-vote-list" class="player-list" tabindex="0" aria-label="List of players to vote for">
+        <!-- Players listed here -->
+      </div>
+      <div class="flex-row" style="justify-content: flex-end; padding-top: 1rem;">
+        <button type="submit" id="submit-votes-btn" disabled>Submit Votes</button>
+      </div>
+    </form>
+    <div style="margin-top:1rem; text-align: center;">
+      <button id="btn-show-results">Show Results</button>
+    </div>
+  </section>
+
+  <!-- Results screen -->
+  <section id="results-screen" class="screen card" aria-label="Game Results">
+    <h2>Results</h2>
+    <div id="results-list" class="results-list" tabindex="0" aria-live="polite" aria-atomic="true">
+      <!-- Results populated here -->
+    </div>
+    <div style="text-align: center; margin-top: 2rem;">
+      <button id="btn-play-again">Play Again</button>
+    </div>
+  </section>
+
+</div>
+
+<footer aria-label="Footer">
+  <p>Moon Game &mdash; Popularity voting game. Built by Wendy-Ann.</p>
+</footer>
+
+<script>
+(() => {
+  // Utility functions
+  function generateRoomCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for(let i =0; i<4; i++) {
+      code += chars.charAt(Math.floor(Math.random()*chars.length));
+    }
+    return code;
+  }
+
+  function sanitizeNickname(name) {
+    return name.trim().substring(0, 25);
+  }
+
+  function saveRoomToStorage(room) {
+    localStorage.setItem('moon-game-room-' + room.code, JSON.stringify(room));
+  }
+  function loadRoomFromStorage(code) {
+    const raw = localStorage.getItem('moon-game-room-' + code);
+    if(!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function savePlayerVotes(roomCode, nickname, votes) {
+    localStorage.setItem('moon-game-votes-' + roomCode + '-' + nickname, JSON.stringify(votes));
+  }
+  function loadPlayerVotes(roomCode, nickname) {
+    const raw = localStorage.getItem('moon-game-votes-' + roomCode + '-' + nickname);
+    if(!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function getAllPlayerVotes(room) {
+    const results = {};
+    room.players.forEach(p => {
+      results[p] = {};
+    });
+    // gather votes from localStorage keys
+    for(let i=0;i<localStorage.length;i++) {
+      const key = localStorage.key(i);
+      if(key.startsWith('moon-game-votes-' + room.code + '-')) {
+        try {
+          const votesData = JSON.parse(localStorage.getItem(key));
+          const voter = key.substring(('moon-game-votes-' + room.code + '-').length);
+          results[voter] = votesData;
+        } catch {}
+      }
+    }
+    return results;
+  }
+
+  function countVotesForPlayers(room, allVotes) {
+    // Sum votes per player across all submitted votes
+    const voteCounts = {};
+    room.players.forEach(p => { voteCounts[p] = 0; });
+    for(const voter in allVotes) {
+      const voterVotes = allVotes[voter];
+      for(const votedPlayer in voterVotes) {
+        if(votedPlayer !== voter && voteCounts.hasOwnProperty(votedPlayer)) {
+          let v = parseInt(voterVotes[votedPlayer]);
+          if(!isNaN(v) && v > 0) voteCounts[votedPlayer] += v;
+        }
+      }
+    }
+    return voteCounts;
+  }
+
+  // Calculate score tier given votes and player count
+  function calculateScoreTier(votes, playerCount) {
+    if (playerCount <= 0) return 'X'; // no players edge case
+
+    // The vote ranges are defined relative to max and min votes:
+    // Find max votes possible = 5 * playerCount (max votes if all players gave max 5 votes to one)
+    // But since each player gives only 5 total votes distributed, max votes to one player realistically is less,
+    // we use relative percentile of votes to determine tier.
+
+    // We'll compute normalized score: votes / max votes received among all players,
+    // but since in context function is per player, and we have playerCount, we'll use grades as relative % of max votes possible, scaled by player count.
+    // For simplicity, define thresholds as ratios of playerCount:
+
+    // For example:
+    // A: votes >= 0.6 * playerCount
+    // B: votes >= 0.4 * playerCount
+    // C: votes >= 0.2 * playerCount
+    // D: votes > 0
+    // X: no votes
+
+    if (votes === 0) return 'X';
+
+    if (votes >= 0.6 * playerCount) return 'A';
+    if (votes >= 0.4 * playerCount) return 'B';
+    if (votes >= 0.2 * playerCount) return 'C';
+    return 'D';
+  }
+
+  function validateVotesInput(votes, self, maxVotes=5) {
+    let sum = 0;
+    for(const p in votes) {
+      if(p === self) {
+        if(votes[p] !== 0) return false;
+      }
+      const val = parseInt(votes[p]);
+      if(isNaN(val) || val < 0) return false;
+      sum += val;
+    }
+    if(sum > maxVotes) return false;
+    return true;
+  }
+
+  // State
+  let state = {
+    nickname: '',
+    room: null,
+    votes: {}, // player's votes map (nickname => votes object)
+  };
+
+  // DOM elements
+  const screens = {
+    login: document.getElementById('login-screen'),
+    createRoom: document.getElementById('create-room-screen'),
+    joinRoom: document.getElementById('join-room-screen'),
+    room: document.getElementById('room-screen'),
+    results: document.getElementById('results-screen'),
+  };
+
+  // Forms and Inputs
+  const nicknameInput = document.getElementById('nickname-input');
+  const btnCreateRoom = document.getElementById('btn-create-room');
+  const btnJoinRoom = document.getElementById('btn-join-room');
+
+  const createRoomForm = document.getElementById('create-room-form');
+  const maxPlayersInput = document.getElementById('max-players-input');
+  const btnCreateRoomSubmit = document.getElementById('btn-create-room-submit');
+  const btnCreateRoomBack = document.getElementById('btn-create-room-back');
+
+  const joinRoomForm = document.getElementById('join-room-form');
+  const roomCodeInput = document.getElementById('room-code-input');
+  const btnJoinRoomSubmit = document.getElementById('btn-join-room-submit');
+  const btnJoinRoomBack = document.getElementById('btn-join-room-back');
+  const joinErrorMessage = document.getElementById('join-error-message');
+
+  const roomCodeDisplay = document.getElementById('room-code-display');
+  const roomMaxPlayers = document.getElementById('room-max-players');
+  const roomPlayerCount = document.getElementById('room-player-count');
+  const votesRemainingElem = document.getElementById('votes-remaining');
+  const playersVoteList = document.getElementById('players-vote-list');
+  const votingForm = document.getElementById('voting-form');
+  const submitVotesBtn = document.getElementById('submit-votes-btn');
+  const btnShowResults = document.getElementById('btn-show-results');
+
+  const resultsScreen = document.getElementById('results-screen');
+  const resultsList = document.getElementById('results-list');
+  const btnPlayAgain = document.getElementById('btn-play-again');
+
+  // Helpers for screen switching
+  function showScreen(name) {
+    Object.entries(screens).forEach(([k,v]) => {
+      if(k===name) v.classList.add('active');
+      else v.classList.remove('active');
+    });
+  }
+
+  // Validation helpers
+  function validateNickname() {
+    const val = nicknameInput.value.trim();
+    return val.length > 0 && val.length <= 25;
+  }
+  function validateMaxPlayers() {
+    const val = parseInt(maxPlayersInput.value);
+    return !isNaN(val) && val >= 1 && val <= 2000;
+  }
+  function validateRoomCodeInput() {
+    const val = roomCodeInput.value.trim().toUpperCase();
+    return /^[A-Z0-9]{4}$/.test(val);
+  }
+
+  // Enable/disable buttons based on inputs
+  function updateLoginButtonsState() {
+    const validNick = validateNickname();
+    btnCreateRoom.disabled = !validNick;
+    btnJoinRoom.disabled = !validNick;
+  }
+  function updateCreateRoomSubmit() {
+    btnCreateRoomSubmit.disabled = !validateMaxPlayers();
+  }
+  function updateJoinRoomSubmit() {
+    btnJoinRoomSubmit.disabled = !validateRoomCodeInput();
+  }
+
+  // Events: input listeners
+  nicknameInput.addEventListener('input', () => {
+    updateLoginButtonsState();
+  });
+  maxPlayersInput.addEventListener('input', () => {
+    updateCreateRoomSubmit();
+  });
+  roomCodeInput.addEventListener('input', () => {
+    roomCodeInput.value = roomCodeInput.value.toUpperCase();
+    updateJoinRoomSubmit();
+    joinErrorMessage.style.display = 'none';
+    joinErrorMessage.textContent = '';
+  });
+
+  // Button events - show create or join screen
+  btnCreateRoom.addEventListener('click', () => {
+    maxPlayersInput.value = '';
+    btnCreateRoomSubmit.disabled = true;
+    showScreen('createRoom');
+  });
+  btnJoinRoom.addEventListener('click', () => {
+    roomCodeInput.value = '';
+    btnJoinRoomSubmit.disabled = true;
+    joinErrorMessage.style.display = 'none';
+    joinErrorMessage.textContent = '';
+    showScreen('joinRoom');
+  });
+  btnCreateRoomBack.addEventListener('click', () => {
+    showScreen('login');
+  });
+  btnJoinRoomBack.addEventListener('click', () => {
+    showScreen('login');
+  });
+
+  // Create room form submit
+  createRoomForm.addEventListener('submit', e => {
+    e.preventDefault();
+    if(!validateNickname() || !validateMaxPlayers()) return;
+
+    const nickname = sanitizeNickname(nicknameInput.value);
+    const maxPlayers = Math.min(Math.max(parseInt(maxPlayersInput.value), 1), 2000);
+
+    let code;
+    let attempts = 0;
+    do {
+      code = generateRoomCode();
+      attempts++;
+      if(attempts > 50) break;
+    } while (loadRoomFromStorage(code) !== null);
+
+    const room = {
+      code,
+      maxPlayers,
+      players: [nickname],
+      createdAt: Date.now(),
+    };
+    saveRoomToStorage(room);
+
+        state.nickname = nickname;
+    state.room = room;
+    state.votes = {};
+    savePlayerVotes(room.code, nickname, {});
+
+    roomCodeDisplay.textContent = 'Room Code: ' + room.code;
+    roomMaxPlayers.textContent = room.maxPlayers.toString();
+    roomPlayerCount.textContent = room.players.length.toString();
+    playersVoteList.innerHTML = 'Loading players...';
+    playersVoteList.classList.add('loading');
+
+    showScreen('room');
+
+    setTimeout(() => {
+      renderRoom();
+      playersVoteList.classList.remove('loading');
+    }, 10);
+  });
+
+  // Join room form submit
+  joinRoomForm.addEventListener('submit', e => {
+    e.preventDefault();
+    if(!validateNickname() || !validateRoomCodeInput()) return;
+
+    const nickname = sanitizeNickname(nicknameInput.value);
+    const code = roomCodeInput.value.toUpperCase();
+    const room = loadRoomFromStorage(code);
+
+    if(!room) {
+      joinErrorMessage.style.display = 'block';
+      joinErrorMessage.textContent = 'Room not found. Please check the code.';
+      return;
+    }
+    if(room.players.length >= room.maxPlayers) {
+      joinErrorMessage.style.display = 'block';
+      joinErrorMessage.textContent = `Room is full (max ${room.maxPlayers} players).`;
+      return;
+    }
+    if(room.players.includes(nickname)) {
+      joinErrorMessage.style.display = 'block';
+      joinErrorMessage.textContent = 'Nickname already taken in this room.';
+      return;
+    }
+
+    room.players.push(nickname);
+    saveRoomToStorage(room);
+
+    state.nickname = nickname;
+    state.room = room;
+    state.votes = loadPlayerVotes(code, nickname) || {};
+    savePlayerVotes(code, nickname, state.votes);
+    renderRoom();
+    showScreen('room');
+  });
+
+  // Render room screen contents and voting form
+  function renderRoom() {
+    const { room, nickname, votes } = state;
+    if(!room) return;
+
+    roomCodeDisplay.textContent = 'Room Code: ' + room.code;
+    roomMaxPlayers.textContent = room.maxPlayers.toString();
+    roomPlayerCount.textContent = room.players.length.toString();
+
+    const updatedRoom = loadRoomFromStorage(room.code);
+    if(updatedRoom) {
+      state.room.players = updatedRoom.players;
+    }
+
+    playersVoteList.innerHTML = '';
+    const players = state.room.players;
+    const maxVotes = 5;
+    players.forEach(p => {
+      if(!(p in state.votes)) {
+        state.votes[p] = 0;
+      }
+    });
+
+    let usedVotes = 0;
+    for(const p in state.votes) {
+      if(p !== nickname) {
+        const v = parseInt(state.votes[p]);
+        if(!isNaN(v) && v > 0) usedVotes += v;
+      }
+    }
+    const votesRemaining = maxVotes - usedVotes;
+    votesRemainingElem.textContent = votesRemaining;
+
+    let validVotes = validateVotesInput(state.votes, nickname, maxVotes);
+
+    players.forEach(p => {
+      const isSelf = (p === nickname);
+      const val = isSelf ? 0 : (state.votes[p] || 0);
+      const inputId = 'vote-input-' + p;
+
+      const div = document.createElement('div');
+      div.className = 'player-item';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'player-name';
+      nameSpan.textContent = p + (isSelf ? ' (You)' : '');
+      nameSpan.setAttribute('title', isSelf ? 'You cannot vote for yourself' : `Vote for ${p}`);
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'vote-input';
+      input.min = '0';
+      input.max = (isSelf ? '0' : String(maxVotes));
+      input.value = val;
+      input.id = inputId;
+      input.setAttribute('aria-label', isSelf ? `Votes for yourself disabled` : `Votes for player ${p}`);
+      input.disabled = isSelf;
+
+      input.addEventListener('input', (ev) => {
+        let v = ev.target.value;
+        v = v.replace(/[^\d]/g,'');
+        if(v === '') v = '0';
+        let num = parseInt(v);
+        if (isNaN(num)) num = 0;
+        if(num < 0) num = 0;
+        if(num > maxVotes) num = maxVotes;
+        ev.target.value = num;
+
+        state.votes[p] = num;
+
+        let sumVotes = 0;
+        for(const player in state.votes) {
+          if(player !== nickname) sumVotes += parseInt(state.votes[player]) || 0;
+        }
+
+        if(sumVotes > maxVotes) {
+          const diff = sumVotes - maxVotes;
+          let corrected = num - diff;
+          if(corrected < 0) corrected = 0;
+          state.votes[p] = corrected;
+          ev.target.value = corrected;
+          sumVotes = maxVotes;
+        }
+
+        votesRemainingElem.textContent = maxVotes - sumVotes;
+
+        const valid = validateVotesInput(state.votes, nickname, maxVotes);
+        submitVotesBtn.disabled = !valid;
+      });
+
+      div.appendChild(nameSpan);
+      div.appendChild(input);
+
+      playersVoteList.appendChild(div);
+    });
+
+    submitVotesBtn.disabled = !validVotes;
+  }
+
+  // Submit votes form
+  votingForm.addEventListener('submit', e => {
+    e.preventDefault();
+    if(!state.room) return;
+
+    const valid = validateVotesInput(state.votes, state.nickname, 5);
+    if(!valid) {
+      alert('Invalid votes. Total votes must be at most 5, and you cannot vote for yourself.');
+      return;
+    }
+
+    savePlayerVotes(state.room.code, state.nickname, state.votes);
+    alert('Votes saved successfully!');
+    submitVotesBtn.disabled = true;
+  });
+
+  // Show results logic with tiers
+  btnShowResults.addEventListener('click', () => {
+    if(!state.room) return;
+
+    const allVotes = getAllPlayerVotes(state.room);
+    const voteCounts = countVotesForPlayers(state.room, allVotes);
+
+    const playerCount = (state.room && state.room.players.length) || 1;
+
+    // Sort players by votes descending
+    const sortedPlayers = Object.entries(voteCounts)
+      .sort((a,b) => b[1] - a[1]);
+
+    resultsList.innerHTML = '';
+    const maxCount = sortedPlayers.length > 0 ? sortedPlayers[0][1] || 1 : 1;
+
+    sortedPlayers.forEach(([player, count]) => {
+      const tier = calculateScoreTier(count, playerCount);
+
+      const div = document.createElement('div');
+      div.className = 'results-item';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = player;
+
+      const detailsDiv = document.createElement('div');
+      detailsDiv.style.display = 'flex';
+      detailsDiv.style.alignItems = 'center';
+
+      const countSpan = document.createElement('span');
+      countSpan.textContent = count.toString();
+
+      const tierSpan = document.createElement('span');
+      tierSpan.className = 'score-tier';
+      tierSpan.textContent = tier;
+      tierSpan.title = `Score Tier: ${tier}`;
+
+      const barContainer = document.createElement('div');
+      barContainer.className = 'vote-bar-container';
+      barContainer.setAttribute('aria-hidden', 'true');
+
+      const barFill = document.createElement('div');
+      barFill.className = 'vote-bar-fill';
+
+      const widthPercent = maxCount === 0 ? 0 : (count / maxCount) * 100;
+      barFill.style.width = widthPercent + '%';
+
+      barContainer.appendChild(barFill);
+      detailsDiv.appendChild(countSpan);
+      detailsDiv.appendChild(barContainer);
+      detailsDiv.appendChild(tierSpan);
+
+      div.appendChild(nameSpan);
+      div.appendChild(detailsDiv);
+
+      resultsList.appendChild(div);
+    });
+
+    showScreen('results');
+  });
+
+  // Play again button resets state
+  btnPlayAgain.addEventListener('click', () => {
+    state.nickname = '';
+    state.room = null;
+    state.votes = {};
+    nicknameInput.value = '';
+    maxPlayersInput.value = '';
+    roomCodeInput.value = '';
+    submitVotesBtn.disabled = true;
+    btnCreateRoom.disabled = true;
+    btnJoinRoom.disabled = true;
+    showScreen('login');
+  });
+
+  // Initial enable/disable buttons call
+  updateLoginButtonsState();
+
+  // Accessibility general: trap focus on vote inputs
+  playersVoteList.addEventListener('keydown', e => {
+    if(e.key === 'Tab') {
+      const focusable = playersVoteList.querySelectorAll('input.vote-input');
+      if(focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length-1];
+      if(e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if(!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+})();
+
+</script>
+
+</body>
+</html>
